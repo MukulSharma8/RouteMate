@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:routemate/screens/auth/login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -38,7 +39,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeInOut,
       );
     } else {
-      // Navigate to your home screen here.
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=> LoginScreen()));
     }
   }
 
@@ -91,19 +92,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // Route illustration placeholder
-                              Container(
-                                width: double.infinity,
-                                height: constraints.maxHeight * 0.43,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE4EFFF),
-                                  borderRadius: BorderRadius.circular(26),
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.route,
-                                    size: 90,
-                                    color: Color(0xFF2563EB),
-                                  ),
+                              // Route illustration
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(26),
+                                child: Image.asset(
+                                  'assets/images/Roadmap.png',
+                                  width: double.infinity,
+                                  height: constraints.maxHeight * 0.43,
+                                  fit: BoxFit.cover,
                                 ),
                               ),
 
