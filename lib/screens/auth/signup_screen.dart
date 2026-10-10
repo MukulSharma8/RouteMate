@@ -1,15 +1,16 @@
 
 import 'package:flutter/material.dart';
-import 'signup_screen.dart';
+import 'login_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _SignUpScreenState extends State<SignUpScreen> {
+  final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
@@ -21,20 +22,17 @@ class _LoginScreenState extends State<LoginScreen> {
   static const secondaryText = Color(0xFF64748B);
   static const borderColor = Color(0xFFE2E8F0);
 
-  void login() {
+  void createAccount() {
     // TODO: Connect to AuthService.
   }
 
-  void signInWithGoogle() {
+  void signUpWithGoogle() {
     // TODO: Implement Google authentication.
-  }
-
-  void forgotPassword() {
-    // TODO: Open the forgot password screen.
   }
 
   @override
   void dispose() {
+    nameController.dispose();
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
@@ -92,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // Heading
               const Text(
-                'Welcome back',
+                'Create your account',
                 style: TextStyle(
                   fontSize: 29,
                   fontWeight: FontWeight.w700,
@@ -104,7 +102,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
 
               const Text(
-                'Log in to pick up where your routes left off.',
+                'Start planning smarter trips in seconds.',
                 style: TextStyle(
                   fontSize: 16,
                   height: 1.5,
@@ -114,7 +112,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 32),
 
-              // Email field
+              // Full name
+              _buildTextField(
+                controller: nameController,
+                hint: 'Full name',
+                icon: Icons.person_outline,
+              ),
+
+              const SizedBox(height: 12),
+
+              // Email
               _buildTextField(
                 controller: emailController,
                 hint: 'Email address',
@@ -124,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 12),
 
-              // Password field
+              // Password
               TextField(
                 controller: passwordController,
                 obscureText: obscurePassword,
@@ -148,27 +155,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              // Forgot password
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: forgotPassword,
-                  child: const Text(
-                    'Forgot password?',
-                    style: TextStyle(
-                      color: blue,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
+              const SizedBox(height: 24),
 
-              const SizedBox(height: 8),
-
-              // Login button
+              // Create account button
               _primaryButton(
-                label: 'Log in',
-                onPressed: login,
+                label: 'Create account',
+                onPressed: createAccount,
               ),
 
               const SizedBox(height: 24),
@@ -183,13 +175,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 28),
 
-              // Navigate to signup
+              // Navigate to login
               Center(
                 child: Wrap(
                   alignment: WrapAlignment.center,
                   children: [
                     const Text(
-                      'New to RouteMate? ',
+                      'Already have an account? ',
                       style: TextStyle(
                         color: secondaryText,
                         fontSize: 13,
@@ -200,12 +192,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const SignUpScreen(),
+                            builder: (_) => const LoginScreen(),
                           ),
                         );
                       },
                       child: const Text(
-                        'Sign up',
+                        'Log in',
                         style: TextStyle(
                           color: blue,
                           fontSize: 13,
@@ -326,7 +318,7 @@ class _LoginScreenState extends State<LoginScreen> {
       width: double.infinity,
       height: 50,
       child: OutlinedButton(
-        onPressed: signInWithGoogle,
+        onPressed: signUpWithGoogle,
         style: OutlinedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: textColor,
@@ -338,11 +330,11 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              'assets/images/icons/google_logo.png',
-              width: 20,
-              height: 20,
-            ),
+            // Image.asset(
+            //   // 'assets/images/icons/google_logo.png',
+            //   width: 20,
+            //   height: 20,
+            // ),
             const SizedBox(width: 12),
             const Text(
               'Continue with Google',

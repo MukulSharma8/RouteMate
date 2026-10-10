@@ -44,7 +44,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void skipOnboarding() {
-    // Navigate to your home screen here.
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=> LoginScreen()));
   }
 
   @override
