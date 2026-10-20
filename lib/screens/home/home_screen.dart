@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:routemate/core/constants/app_colors.dart';
+import 'package:routemate/screens/explore/explore_screen.dart';
+import 'package:routemate/screens/favourite/favourite_screen.dart';
+import 'package:routemate/screens/place/place_details_screen.dart';
+
+import '../../widgets/bottom_nav_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -58,17 +63,17 @@ class _HomeScreenState extends State<HomeScreen> {
       'address': 'Lodhi Road, Pragati Vihar',
       'rating': '4.0',
       'distance': '0.7 km',
-    },{
+    }, {
       'name': 'IndianOilPetrolPump',
       'address': 'Aurobindo Marg',
       'rating': '4.0',
       'distance': '0.7 km',
-    },{
+    }, {
       'name': 'Cafe Lota',
       'address': 'Pragati Maidan',
       'rating': '4.5',
       'distance': '0.7 km',
-    },{
+    }, {
       'name': 'Bukhara',
       'address': 'ITC Maurya, Chanakyapuri',
       'rating': '4.7',
@@ -101,8 +106,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-
-            _buildBottomNavigation(),
+            BottomNavBar(
+              selectedIndex: 0,
+              onItemSelected: (index) {
+                if (index == 1) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ExploreScreen(),
+                    ),
+                  );
+                }if (index == 2) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const FavouritesScreen(),
+                    ),
+                  );
+                }
+              },
+            ),
           ],
         ),
       ),
@@ -403,7 +426,24 @@ class _HomeScreenState extends State<HomeScreen> {
       children: nearbyPlaces.map((place) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: _buildPlaceCard(place),
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      PlaceDetailsScreen(
+                        placeName: place['name']!,
+                        address: place['address']!,
+                        rating: place['rating']!,
+                        distance: place['distance']!,
+                        category: 'Cafes',
+                      ),
+                ),
+              );
+            },
+            child: _buildPlaceCard(place),
+          ),
         );
       }).toList(),
     );
@@ -497,90 +537,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ------------------------------------------------------------
-  // BOTTOM NAVIGATION
-  // ------------------------------------------------------------
-
-  Widget _buildBottomNavigation() {
-    return Container(
-      height: 68,
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(
-          top: BorderSide(
-            color: AppColors.border,
-          ),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(
-            index: 0,
-            icon: Icons.home_outlined,
-            label: 'Home',
-          ),
-          _buildNavItem(
-            index: 1,
-            icon: Icons.map_outlined,
-            label: 'Explore',
-          ),
-          _buildNavItem(
-            index: 2,
-            icon: Icons.favorite_border,
-            label: 'Favourites',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required int index,
-    required IconData icon,
-    required String label,
-  }) {
-    final bool isSelected = _selectedIndex == index;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedIndex = index;
-        });
-      },
-      child: Container(
-        width: 65,
-        height: 52,
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.lightBlue
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: AppColors.primary,
-            ),
-
-            const SizedBox(height: 2),
-
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: AppColors.primary,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
