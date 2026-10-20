@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:routemate/screens/home/home_screen.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -22,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   static const borderColor = Color(0xFFE2E8F0);
 
   void login() {
-    // TODO: Connect to AuthService.
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=> HomeScreen()));
   }
 
   void signInWithGoogle() {
