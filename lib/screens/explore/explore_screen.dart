@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:routemate/core/constants/app_colors.dart';
 import 'package:routemate/screens/home/home_screen.dart';
 import '../../widgets/bottom_nav_bar.dart';
 import '../favourite/favourite_screen.dart';
-
+import '../../services/places_service.dart';
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
@@ -12,42 +16,152 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  int selectedCategory = 0;
+  LatLng? _currentLocation;
+  Completer<GoogleMapController> _controller = Completer();
+  static const CameraPosition _kGooglePlex = CameraPosition(
+    target: LatLng(30.741482, 76.768066),
+    zoom: 14.4746,
+  );
 
+  int selectedCategory = 0;
   final List<String> categories = [
     'Cafes',
     'Restaurants',
     'Hospitals',
     'ATMs',
   ];
+  List<Map<String, dynamic>> nearbyPlaces = [];
 
-  final List<Map<String, String>> nearbyPlaces = [
-    {
-      'name': 'Blue Tokai Coffee',
-      'address': '14 Khan Market, New Delhi',
-      'rating': '4.6',
-      'distance': '0.4 km',
-    },
-    {
-      'name': 'Saravana Bhavan',
-      'address': '46 Janpath, Connaught Place',
-      'rating': '4.4',
-      'distance': '1.2 km',
-    },
-    {
-      'name': 'AIIMS Hospital',
-      'address': 'Ansari Nagar East, New Delhi',
-      'rating': '4.2',
-      'distance': '2.8 km',
-    },
-    {
-      'name': 'HDFC Bank ATM',
-      'address': 'Lodhi Road, Pragati Vihar',
-      'rating': '4.0',
-      'distance': '0.7 km',
-    },
-  ];
+  final PlacesService _placesService = PlacesService(
+    apiKey: 'AIzaSyDr0d9_JB5LUPF233nup6aTnObQunKBpKQ',
+  );
+  Future<void> _loadNearbyPlaces() async {
+    try {
+      Position position = await getUserCurrentLocation();
 
+      String placeType;
+
+      switch (selectedCategory) {
+        case 0:
+          placeType = 'cafe';
+          break;
+        case 1:
+          placeType = 'restaurant';
+          break;
+        case 2:
+          placeType = 'hospital';
+          break;
+        case 3:
+          placeType = 'atm';
+          break;
+        default:
+          placeType = 'cafe';
+      }
+
+      print('Searching for: $placeType');
+      print('Latitude: ${position.latitude}');
+      print('Longitude: ${position.longitude}');
+
+      final places = await _placesService.getNearbyPlaces(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        placeType: placeType,
+      );
+
+      print('Google returned ${places.length} places');
+
+      final List<Map<String, dynamic>> formattedPlaces = [];
+
+      for (final place in places) {
+        final location = place['location'];
+
+        double? distance;
+
+        if (location != null) {
+          final double placeLatitude =
+          (location['latitude'] as num).toDouble();
+
+          final double placeLongitude =
+          (location['longitude'] as num).toDouble();
+
+          distance = Geolocator.distanceBetween(
+            position.latitude,
+            position.longitude,
+            placeLatitude,
+            placeLongitude,
+          );
+        }
+
+        formattedPlaces.add({
+          'name': place['displayName']?['text']?.toString()
+              ?? 'Unknown place',
+
+          'address': place['formattedAddress']?.toString()
+              ?? 'Address unavailable',
+
+          'rating': place['rating']?.toString()
+              ?? 'N/A',
+
+          'distance': distance != null
+              ? '${(distance / 1000).toStringAsFixed(1)} km'
+              : '',
+        });
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        nearbyPlaces = formattedPlaces;
+      });
+
+    } catch (e) {
+      print('ERROR loading nearby places: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        nearbyPlaces = [];
+      });
+    }
+  }
+  Future<Position> getUserCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Check whether location service is turned on
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+
+    if (!serviceEnabled) {
+      throw Exception('Location services are disabled.');
+    }
+
+    // Check current permission
+    permission = await Geolocator.checkPermission();
+
+    // Ask for permission if not already granted
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+
+      if (permission == LocationPermission.denied) {
+        throw Exception('Location permission denied.');
+      }
+    }
+
+    // Permission permanently denied
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception('Location permission permanently denied.');
+    }
+
+    // Get current location
+    Position position = await Geolocator.getCurrentPosition();
+
+    return position;
+  }
+  @override
+  void initState() {
+    super.initState();
+    _loadNearbyPlaces();
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -102,12 +216,50 @@ class _ExploreScreenState extends State<ExploreScreen> {
   // ------------------------------------------------------------
 
   Widget _buildMap() {
-    return SizedBox(
-      width: double.infinity,
-      height: double.infinity,
-      child: CustomPaint(
-        painter: ExploreMapPainter(),
+    return Stack(
+      children:[ GoogleMap(
+        initialCameraPosition: _kGooglePlex,
+        mapType: MapType.normal,
+        myLocationEnabled: true,
+        compassEnabled: true,
+        onMapCreated: (GoogleMapController mapcontroller){
+          _controller.complete(mapcontroller);
+        },
       ),
+        Positioned(
+          left: 100,
+            top: 300,
+            child: FloatingActionButton(
+              onPressed: () async {
+                print("Location button clicked");
+
+                Position position = await getUserCurrentLocation();
+
+                print("Latitude: ${position.latitude}");
+                print("Longitude: ${position.longitude}");
+
+                GoogleMapController mapController =
+                await _controller.future;
+
+                print("Map controller ready");
+
+                mapController.animateCamera(
+                  CameraUpdate.newCameraPosition(
+                    CameraPosition(
+                      target: LatLng(
+                        position.latitude,
+                        position.longitude,
+                      ),
+                      zoom: 16,
+                    ),
+                  ),
+                );
+
+                print("Camera moved");
+              },
+              child: const Icon(Icons.location_history),
+            ))
+      ],
     );
   }
 
@@ -167,10 +319,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
           itemCount: categories.length,
           itemBuilder: (context, index) {
             return GestureDetector(
-              onTap: () {
+              onTap: () async {
                 setState(() {
                   selectedCategory = index;
                 });
+
+                await _loadNearbyPlaces();
               },
               child: Container(
                 margin: const EdgeInsets.only(right: 7),
@@ -288,13 +442,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
             const SizedBox(height: 10),
 
             // Places count
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '7 places found',
-                  style: TextStyle(
+                  '${nearbyPlaces.length} places found',
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
@@ -331,7 +485,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   // PLACE CARD
   // ------------------------------------------------------------
 
-  Widget _buildPlaceCard(Map<String, String> place) {
+  Widget _buildPlaceCard(Map<String, dynamic> place) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
@@ -352,7 +506,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               borderRadius: BorderRadius.circular(13),
             ),
             child: const Icon(
-              Icons.coffee_outlined,
+              Icons.place_outlined,
               color: AppColors.primary,
               size: 20,
             ),
@@ -365,7 +519,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  place['name']!,
+                  place['name'] ?? 'Unknown place',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -376,7 +530,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 const SizedBox(height: 2),
 
                 Text(
-                  place['address']!,
+                  place['address'] ?? 'Address unavailable',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -398,7 +552,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     const SizedBox(width: 3),
 
                     Text(
-                      place['rating']!,
+                      place['rating'] ?? 'N/A',
                       style: const TextStyle(
                         fontSize: 10,
                         color: AppColors.textPrimary,
@@ -408,7 +562,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     const SizedBox(width: 9),
 
                     Text(
-                      place['distance']!,
+                      place['distance'] ?? '',
                       style: const TextStyle(
                         fontSize: 10,
                         color: AppColors.textSecondary,
@@ -495,184 +649,5 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ],
       ),
     );
-  }
-}
-
-// ------------------------------------------------------------
-// SIMPLE MAP PAINTER
-// ------------------------------------------------------------
-
-class ExploreMapPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final backgroundPaint = Paint()
-      ..color = const Color(0xFFEAF2EE);
-
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      backgroundPaint,
-    );
-
-    // Water
-    final waterPaint = Paint()
-      ..color = const Color(0xFFAEDCF0);
-
-    final waterPath = Path();
-
-    waterPath.moveTo(size.width * 0.72, 0);
-    waterPath.lineTo(size.width, 0);
-    waterPath.lineTo(size.width, size.height * 0.48);
-    waterPath.cubicTo(
-      size.width * 0.88,
-      size.height * 0.45,
-      size.width * 0.75,
-      size.height * 0.40,
-      size.width * 0.70,
-      size.height * 0.28,
-    );
-    waterPath.close();
-
-    canvas.drawPath(waterPath, waterPaint);
-
-    // Roads
-    final roadPaint = Paint()
-      ..color = AppColors.white
-      ..strokeWidth = 4
-      ..style = PaintingStyle.stroke;
-
-    // Horizontal roads
-    canvas.drawLine(
-      Offset(0, size.height * 0.16),
-      Offset(size.width, size.height * 0.16),
-      roadPaint,
-    );
-
-    canvas.drawLine(
-      Offset(0, size.height * 0.35),
-      Offset(size.width, size.height * 0.35),
-      roadPaint,
-    );
-
-    canvas.drawLine(
-      Offset(0, size.height * 0.58),
-      Offset(size.width, size.height * 0.58),
-      roadPaint,
-    );
-
-    canvas.drawLine(
-      Offset(0, size.height * 0.78),
-      Offset(size.width, size.height * 0.78),
-      roadPaint,
-    );
-
-    // Vertical roads
-    canvas.drawLine(
-      Offset(size.width * 0.18, 0),
-      Offset(size.width * 0.22, size.height),
-      roadPaint,
-    );
-
-    canvas.drawLine(
-      Offset(size.width * 0.42, 0),
-      Offset(size.width * 0.44, size.height),
-      roadPaint,
-    );
-
-    canvas.drawLine(
-      Offset(size.width * 0.65, 0),
-      Offset(size.width * 0.67, size.height),
-      roadPaint,
-    );
-
-    // Place markers
-    _drawMarker(
-      canvas,
-      Offset(size.width * 0.30, size.height * 0.31),
-      Icons.coffee_outlined,
-    );
-
-    _drawMarker(
-      canvas,
-      Offset(size.width * 0.16, size.height * 0.50),
-      Icons.restaurant_outlined,
-    );
-
-    _drawMarker(
-      canvas,
-      Offset(size.width * 0.47, size.height * 0.55),
-      Icons.coffee_outlined,
-    );
-
-    _drawMarker(
-      canvas,
-      Offset(size.width * 0.70, size.height * 0.18),
-      Icons.restaurant_outlined,
-    );
-
-    _drawMarker(
-      canvas,
-      Offset(size.width * 0.63, size.height * 0.83),
-      Icons.account_balance_outlined,
-    );
-
-    // Current location
-    final locationOuter = Paint()
-      ..color = AppColors.lightBlue;
-
-    final locationInner = Paint()
-      ..color = AppColors.primary;
-
-    canvas.drawCircle(
-      Offset(size.width * 0.50, size.height * 0.48),
-      18,
-      locationOuter,
-    );
-
-    canvas.drawCircle(
-      Offset(size.width * 0.50, size.height * 0.48),
-      9,
-      locationInner,
-    );
-  }
-
-  void _drawMarker(
-      Canvas canvas,
-      Offset position,
-      IconData icon,
-      ) {
-    final circlePaint = Paint()
-      ..color = AppColors.primary;
-
-    canvas.drawCircle(
-      position,
-      16,
-      circlePaint,
-    );
-
-    final whitePaint = Paint()
-      ..color = AppColors.white;
-
-    canvas.drawCircle(
-      position,
-      16,
-      whitePaint,
-      // This only creates the white outer area.
-    );
-
-    final bluePaint = Paint()
-      ..color = AppColors.primary;
-
-    canvas.drawCircle(
-      position,
-      14,
-      bluePaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(
-      covariant CustomPainter oldDelegate,
-      ) {
-    return false;
   }
 }
